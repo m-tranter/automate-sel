@@ -14,7 +14,7 @@ def waitClick(wait, el):
     el.click()
 
 
-def waitClickId(driver, wait, id):
+def waitClickId(wait, id):
     el = wait.until(EC.element_to_be_clickable((By.ID, id)))
     el.click()
 
@@ -23,7 +23,8 @@ def delete_files(wait, driver, root_title, files):
     root_handle = driver.current_window_handle
     els = ["EF332", "EF333", "EF334", "EF411"]
     for id in els:
-        waitClickId(driver, wait, id)
+        waitClickId(wait, id)
+    time.sleep(1)
     for fname in files:
         links = driver.find_elements(By.CSS_SELECTOR, ".rtIn")
         target_files = [x for x in links if fname == x.text]
@@ -70,9 +71,11 @@ def unarchive(wait, driver, n, cut_off):
     root_title = driver.title
     root_handle = driver.current_window_handle
     # Get into the archive
-    waitClickId(driver, wait, "management-toggle")
-    waitClickId(driver, wait, "ArchivedContent")
 
+    management = driver.find_element(By.ID, "management-toggle")
+    management.click()
+    archive = driver.find_element(By.ID, "ArchivedContent")
+    archive.click()
     # Loop n times and unarchive releases created before cutoff
     i = 0
     while i < n:
@@ -90,6 +93,7 @@ def unarchive(wait, driver, n, cut_off):
             "/council_and_democracy/council_information/media_hub/media_releases"
         )
         path_input.send_keys(Keys.ENTER)
+        time.sleep(1)
         # Sort by date
         main_table = driver.find_element(By.ID, "ctl19_ctl00_Header")
         wait.until(lambda _: main_table.is_displayed())
@@ -98,37 +102,43 @@ def unarchive(wait, driver, n, cut_off):
         a_tags = head[0].find_elements(By.TAG_NAME, "a")
         date_fields = [x for x in a_tags if x.text.strip().lower() == "date created"]
         wait.until(lambda _: date_fields[0].is_displayed())
-        print(date_fields[0].text)
         date_fields[0].click()
         time.sleep(2)
-        
+
         # Find oldest page & date
         rows = driver.find_elements(By.CSS_SELECTOR, ".GridRow_StandardGrid")
         tds = rows[0].find_elements(By.TAG_NAME, "td")
         unarchive = rows[0].find_elements(By.CSS_SELECTOR, ".sys_function_unarchive")
         inner_text = driver.execute_script("return arguments[0].innerHTML;", tds[4])
-        print(inner_text)
         my_split = inner_text.split(" ")
         (d, m, y) = my_split[0].split("/")
         item_date = datetime.datetime(int(y), int(m), int(d))
         # Un-archive
         if item_date < cut_off:
             if "media_release" in tds[3].text:
-                waitClick(wait, unarchive[0])
-                # Find the pop-up window & switch to it
-                wait.until(EC.number_of_windows_to_be(2))
-                for window_handle in driver.window_handles:
-                    if window_handle != root_handle:
-                        driver.switch_to.window(window_handle)
-                        break
-                wait.until(EC.title_is("Confirmation"))
-                waitClickId(driver, wait, "ctl43")
-                # Switch back to main window
-                driver.switch_to.window(root_handle)
-                wait.until(EC.title_is(root_title))
-                target_files.append(tds[1].text)
+                fname = tds[1].text
+                try:
+                    waitClick(wait, unarchive[0])
+                    # Find the pop-up window & switch to it
+                    wait.until(EC.number_of_windows_to_be(2))
+                    for window_handle in driver.window_handles:
+                        if window_handle != root_handle:
+                            driver.switch_to.window(window_handle)
+                            break
+                    time.sleep(1)
+                    wait.until(EC.title_is("Confirmation"))
+                    confirm = driver.find_element(By.ID, "ctl34")
+                    confirm.click()
+                    # Switch back to main window
+                    driver.switch_to.window(root_handle)
+                    wait.until(EC.title_is(root_title))
+                    target_files.append(fname)
+                except:
+                    print(fname)
+                    break
         else:
-            
+            break
+
     return target_files
 
 
@@ -139,7 +149,10 @@ def main():
     my_login(wait, driver, os.getenv("USERNAME"), os.getenv("PASSWORD"))
     cut_off = datetime.datetime(2022, 1, 1)
     files = unarchive(wait, driver, 2, cut_off)
-    # delete_files(wait, driver, driver.title, files)
+    driver.switch_to.default_content()
+    navigator = driver.find_element(By.ID, "navigator-toggle")
+    navigator.click()
+    delete_files(wait, driver, driver.title, files)
     driver.quit()
 
 
