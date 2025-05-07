@@ -33,19 +33,20 @@ def delete_files(wait, driver, root_title, files):
             driver.execute_script("arguments[0].scrollIntoView(true);", my_target)
             waitClick(wait, my_target)
             mydel = driver.find_elements(By.CSS_SELECTOR, "#contextmenu_delete_link")
-            if len(mydel) > 0:
-                waitClick(wait, mydel[0])
-                wait.until(EC.number_of_windows_to_be(2))
-                for window_handle in driver.window_handles:
-                    if window_handle != root_handle:
-                        driver.switch_to.window(window_handle)
-                        break
-                wait.until(EC.title_is("Delete Content to Recycle Bin"))
-                buttons = driver.find_elements(By.CSS_SELECTOR, ".sys_button-danger")
-                if len(buttons) > 0:
-                    waitClick(wait, buttons[0])
-                    driver.switch_to.window(root_handle)
-                    wait.until(EC.title_is(root_title))
+            waitClick(wait, mydel[0])
+            time.sleep(1)
+            wait.until(EC.number_of_windows_to_be(2))
+            for window_handle in driver.window_handles:
+                if window_handle != root_handle:
+                    driver.switch_to.window(window_handle)
+                    break
+            time.sleep(1)
+            wait.until(EC.title_is("Delete Content to Recycle Bin"))
+            buttons = driver.find_elements(By.CSS_SELECTOR, ".sys_button-danger")
+            waitClick(wait, buttons[0])
+            time.sleep(1)
+            driver.switch_to.window(root_handle)
+            wait.until(EC.title_is(root_title))
 
 
 def init_driver():
@@ -80,6 +81,7 @@ def unarchive(wait, driver, n, cut_off):
     i = 0
     while i < n:
         i += 1
+        time.sleep(2)
         iframe = driver.find_element(By.ID, "ContensisUI_Viewer")
         wait.until(lambda _: iframe.is_displayed())
         driver.switch_to.frame(iframe)
@@ -117,25 +119,22 @@ def unarchive(wait, driver, n, cut_off):
         if item_date < cut_off:
             if "media_release" in tds[3].text:
                 fname = tds[1].text
-                try:
-                    waitClick(wait, unarchive[0])
-                    # Find the pop-up window & switch to it
-                    wait.until(EC.number_of_windows_to_be(2))
-                    for window_handle in driver.window_handles:
-                        if window_handle != root_handle:
-                            driver.switch_to.window(window_handle)
-                            break
-                    time.sleep(1)
-                    wait.until(EC.title_is("Confirmation"))
-                    confirm = driver.find_element(By.ID, "ctl34")
-                    confirm.click()
-                    # Switch back to main window
-                    driver.switch_to.window(root_handle)
-                    wait.until(EC.title_is(root_title))
-                    target_files.append(fname)
-                except:
-                    print(fname)
-                    break
+                waitClick(wait, unarchive[0])
+                time.sleep(1)
+                # Find the pop-up window & switch to it
+                wait.until(EC.number_of_windows_to_be(2))
+                for window_handle in driver.window_handles:
+                    if window_handle != root_handle:
+                        driver.switch_to.window(window_handle)
+                        break
+                time.sleep(1)
+                wait.until(EC.title_is("Confirmation"))
+                confirm = driver.find_element(By.ID, "ctl34")
+                confirm.click()
+                # Switch back to main window
+                driver.switch_to.window(root_handle)
+                wait.until(EC.title_is(root_title))
+                target_files.append(fname)
         else:
             break
 
@@ -148,7 +147,9 @@ def main():
     wait = WebDriverWait(driver, timeout=20)
     my_login(wait, driver, os.getenv("USERNAME"), os.getenv("PASSWORD"))
     cut_off = datetime.datetime(2022, 1, 1)
-    files = unarchive(wait, driver, 2, cut_off)
+    files = unarchive(wait, driver, 5, cut_off)
+    for f in files:
+        print(f)
     driver.switch_to.default_content()
     navigator = driver.find_element(By.ID, "navigator-toggle")
     navigator.click()
